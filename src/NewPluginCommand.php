@@ -10,11 +10,12 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Finder\Finder;
-use Symfony\Component\Process\Process;
 use Symfony\Component\String\Slugger\AsciiSlugger;
 use function Symfony\Component\String\u;
 
 class NewPluginCommand extends Command {
+
+	use TouchesFiles, RunsCommands;
 
 	protected static $defaultName = 'plugin:new';
 
@@ -61,7 +62,7 @@ class NewPluginCommand extends Command {
 		] );
 
 		if ( ! $input->getOption( 'force' ) ) {
-			$this->verifyPluginDoesntExist( $directory );
+			$this->verifyFolderDoesntExist( $directory );
 		}
 
 		if ( $input->getOption( 'force' ) && $directory === '.' ) {
@@ -180,63 +181,6 @@ class NewPluginCommand extends Command {
 		$output->writeln( '<info><options=bold>SUCCESS! The plugin has successfully been scaffolded.</></info>' );
 
 		return $process2->getExitCode();
-	}
-
-	protected function runCommands( $commands, InputInterface $input, OutputInterface $output ) {
-		$process = Process::fromShellCommandline( implode( ' && ', $commands ), null, null, null, null );
-
-		if ( '\\' !== DIRECTORY_SEPARATOR && file_exists( '/dev/tty' ) && is_readable( '/dev/tty' ) ) {
-			try {
-				$process->setTty( true );
-			} catch ( RuntimeException $e ) {
-				$output->writeln( 'Warning: ' . $e->getMessage() );
-			}
-		}
-
-		$process->run( function ( $type, $line ) use ( $output ) {
-			$output->write( '    ' . $line );
-		} );
-
-		return $process;
-	}
-
-	/**
-	 * Get the composer command for the environment.
-	 *
-	 * @return string
-	 */
-	protected function findComposer() {
-		$composerPath = getcwd() . '/composer.phar';
-
-		if ( file_exists( $composerPath ) ) {
-			return '"' . PHP_BINARY . '" ' . $composerPath;
-		}
-
-		return 'composer';
-	}
-
-	/**
-	 * Replace the given string in the given file.
-	 *
-	 * @param  string  $search
-	 * @param  string  $replace
-	 * @param  string  $file
-	 */
-	protected function replaceInFile( string $search, string $replace, string $file ) {
-		file_put_contents( $file, str_replace( $search, $replace, file_get_contents( $file ) ) );
-	}
-
-	/**
-	 * Verify that the application does not already exist.
-	 *
-	 * @param  string  $directory
-	 *
-	 * @return void
-	 */
-	protected function verifyPluginDoesntExist( $directory ) {
-		if ( ( is_dir( $directory ) || is_file( $directory ) ) && $directory != getcwd() ) {
-			throw new RuntimeException( 'The directory already exists!' );
-		}
 	}
 
 }
