@@ -1,0 +1,33 @@
+{
+  "name": "bernskioldmedia/bm-wp-installers",
+  "description": "An installer for various Bernskiold Media scaffolds.",
+  "license": "MIT",
+  "authors": [
+	{
+	  "name": "Bernskiold Media",
+	  "role": "agency",
+	  "email": "hello@bernskioldmedia.com"
+	}
+  ],
+  "require": {
+    "php": "^7.3",
+    "symfony/console": "5.0",
+    "symfony/finder": "^5.2",
+    "symfony/process": "5.0",
+    "symfony/string": "^5.2",
+    "symfony/translation-contracts": "^2.3"
+  },
+  "bin": [
+	"bin/wp-plugin-scaffold"
+  ],
+  "autoload": {
+	"psr-4": {
+	  "BernskioldMedia\\WP\\Installers\\": "src/"
+	}
+  },
+  "config": {
+	"sort-packages": true
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true
+}
