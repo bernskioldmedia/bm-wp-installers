@@ -2,6 +2,11 @@
   "name": "bernskioldmedia/bm-wp-installers",
   "description": "An installer for various Bernskiold Media scaffolds.",
   "license": "MIT",
+  "keywords": [
+	"wordpress",
+	"bernskiold media",
+	"scaffold"
+  ],
   "authors": [
 	{
 	  "name": "Bernskiold Media",
@@ -10,12 +15,12 @@
 	}
   ],
   "require": {
-    "php": "^7.3",
-    "symfony/console": "5.0",
-    "symfony/finder": "^5.2",
-    "symfony/process": "5.0",
-    "symfony/string": "^5.2",
-    "symfony/translation-contracts": "^2.3"
+	"php": "^7.3",
+	"symfony/console": "5.0",
+	"symfony/finder": "^5.2",
+	"symfony/process": "5.0",
+	"symfony/string": "^5.2",
+	"symfony/translation-contracts": "^2.3"
   },
   "bin": [
 	"bin/wp-plugin-scaffold"
