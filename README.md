@@ -12,7 +12,7 @@ You first need to have Composer installed on your computer.
 
 Then install this package globally:
 
-`composer require -g bernskioldmedia/bm-wp-installers`
+`composer require global bernskioldmedia/bm-wp-installers`
 
 This will make the command `bmwp` available on your computer.
 Running it will give you a list of available commands.
