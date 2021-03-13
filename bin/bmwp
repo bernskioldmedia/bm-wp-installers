@@ -17,5 +17,6 @@ $app->add( new BernskioldMedia\WP\Installers\Create\CompanyCloudCommand );
 $app->add( new BernskioldMedia\WP\Installers\Make\ConfigCommand );
 $app->add( new BernskioldMedia\WP\Installers\Make\DatastoreCptCommand );
 $app->add( new BernskioldMedia\WP\Installers\Make\DatastoreTaxonomyCommand );
+$app->add( new BernskioldMedia\WP\Installers\Make\RestEndpointCommand );
 
 $app->run();
