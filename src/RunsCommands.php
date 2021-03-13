@@ -9,6 +9,23 @@ use Symfony\Component\Process\Process;
 
 trait RunsCommands {
 
+	protected function requirePackage( $package ) {
+		$composer = $this->findComposer();
+
+		return $this->runShellCommand( "$composer require $package" );
+	}
+
+	protected function createPrivateProject( $package, $directory, $scripts = true ) {
+		$composer = $this->findComposer();
+		$command  = "$composer create-project $package $directory --add-repository --repository='{\"packagist.org\": false}' --repository=\"https://repo.packagist.com/bernskioldmedia/\" --stability=dev --prefer-dist --remove-vcs";
+
+		if ( ! $scripts ) {
+			$command .= ' --no-scripts';
+		}
+
+		return $this->runShellCommand( $command );
+	}
+
 	protected function runShellCommand( $command, $args = [], ?callable $callable = null ) {
 		$process = Process::fromShellCommandline( $command );
 		$process->run( $callable, $args );
