@@ -9,6 +9,13 @@ use Symfony\Component\Process\Process;
 
 trait RunsCommands {
 
+	protected function runShellCommand( $command, $args = [], ?callable $callable = null ) {
+		$process = Process::fromShellCommandline( $command );
+		$process->run( $callable, $args );
+
+		return $process;
+	}
+
 	protected function runCommands( $commands, InputInterface $input, OutputInterface $output ) {
 		$process = Process::fromShellCommandline( implode( ' && ', $commands ), null, null, null, null );
 

@@ -8,7 +8,14 @@ if ( file_exists( __DIR__ . '/../../../autoload.php' ) ) {
 }
 
 $app = new Symfony\Component\Console\Application( 'BM WP Installers', '1.0.0' );
-$app->add( new BernskioldMedia\WP\Installers\NewPluginCommand );
-$app->add( new BernskioldMedia\WP\Installers\NewCompanyCloudWebsiteCommand );
+
+// Creators.
+$app->add( new BernskioldMedia\WP\Installers\Create\PluginCommand );
+$app->add( new BernskioldMedia\WP\Installers\Create\CompanyCloudCommand );
+
+// Makers.
+$app->add( new BernskioldMedia\WP\Installers\Make\ConfigCommand );
+$app->add( new BernskioldMedia\WP\Installers\Make\DatastoreCptCommand );
+$app->add( new BernskioldMedia\WP\Installers\Make\DatastoreTaxonomyCommand );
 
 $app->run();

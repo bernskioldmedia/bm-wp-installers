@@ -1,0 +1,54 @@
+<?php
+/**
+ * {{ name }} Environment
+ */
+
+/**
+ * Environment Variables
+ */
+define( 'WP_ENVIRONMENT_TYPE', '{{ environment }}' );
+define( 'ENABLE_LOGGING', {{ logging }} );
+{{ multisite }}
+/**
+ * Debugging Settings
+ */
+define( 'WP_DEBUG', ENABLE_LOGGING );
+define( 'WP_DEBUG_DISPLAY', ENABLE_LOGGING );
+define( 'WP_DEBUG_LOG', ENABLE_LOGGING );
+define( 'SCRIPT_DEBUG', false );
+
+// ** MySQL settings - You can get this info from your web host ** //
+/** The name of the database for WordPress */
+define( 'DB_NAME', '{{ databaseName }}' );
+
+/** MySQL database username */
+define( 'DB_USER', 'wp' );
+
+/** MySQL database password */
+define( 'DB_PASSWORD', 'wp' );
+
+/** MySQL hostname */
+define( 'DB_HOST', '127.0.0.1' );
+
+/**
+ * License Keys
+ */
+define( 'GF_LICENSE_KEY', 'XXXXXX' );
+define( 'ACP_LICENSE', 'XXXXXXXXX' );
+
+/**
+ * API Keys
+ */
+define( 'GOOGLE_MAP_API_KEY', 'XXXXXXX' );
+
+/**
+ * Authentication Unique Keys and Salts.
+ *
+ * Change these to different unique phrases!
+ * You can generate these using the
+ * {@link https://api.wordpress.org/secret-key/1.1/salt/ WordPress.org secret-key service} You can change these at any
+ * point in time to invalidate all existing cookies. This will force all users to have to log in again.
+ *
+ * @since 2.6.0
+ */
+{{ salts }}

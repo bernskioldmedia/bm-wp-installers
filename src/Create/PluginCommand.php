@@ -1,7 +1,9 @@
 <?php
 
-namespace BernskioldMedia\WP\Installers;
+namespace BernskioldMedia\WP\Installers\Create;
 
+use BernskioldMedia\WP\Installers\RunsCommands;
+use BernskioldMedia\WP\Installers\TouchesFiles;
 use RuntimeException;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -13,11 +15,11 @@ use Symfony\Component\Finder\Finder;
 use Symfony\Component\String\Slugger\AsciiSlugger;
 use function Symfony\Component\String\u;
 
-class NewPluginCommand extends Command {
+class PluginCommand extends Command {
 
 	use TouchesFiles, RunsCommands;
 
-	protected static $defaultName = 'plugin:new';
+	protected static $defaultName = 'create:plugin';
 
 	/**
 	 * Configure the command options.

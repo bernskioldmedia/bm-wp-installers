@@ -1,7 +1,9 @@
 <?php
 
-namespace BernskioldMedia\WP\Installers;
+namespace BernskioldMedia\WP\Installers\Create;
 
+use BernskioldMedia\WP\Installers\RunsCommands;
+use BernskioldMedia\WP\Installers\TouchesFiles;
 use Exception;
 use RuntimeException;
 use Symfony\Component\Console\Command\Command;
@@ -10,17 +12,23 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ChoiceQuestion;
+use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\String\Slugger\AsciiSlugger;
 use function Symfony\Component\String\u;
 
-class NewCompanyCloudWebsiteCommand extends Command {
+class CompanyCloudCommand extends Command {
 
 	use TouchesFiles, RunsCommands;
 
-	protected static $defaultName = 'companycloud:new';
+	protected static $defaultName = 'create:companycloud';
 
+	/**
+	 * These plugins will be run in the order given.
+	 *
+	 * @var string[]
+	 */
 	protected static $plugins = [
 		'enable-media-replace',
 		'ilmenite-cookie-consent',
@@ -35,6 +43,14 @@ class NewCompanyCloudWebsiteCommand extends Command {
 		'https://github.com/wp-premium/gravityforms/archive/master.zip --force',
 	];
 
+	/**
+	 * When running in multisite mode, these plugins
+	 * will be network activated.
+	 *
+	 * This list should be a subset of the $plugins list.
+	 *
+	 * @var string[]
+	 */
 	protected static $networkPlugins = [
 		'enable-media-replace',
 		'bm-wp-experience',
@@ -68,16 +84,26 @@ class NewCompanyCloudWebsiteCommand extends Command {
 	 */
 	protected function execute( InputInterface $input, OutputInterface $output ) {
 
-		$slugger = new AsciiSlugger();
-		$helper  = $this->getHelper( 'question' );
-
 		// Get slug.
 		$slug = $input->getArgument( 'slug' );
 
+		// Set defaults.
+		$websiteNameDefault = str_replace( '-', ' ', $slug );
+		$websiteNameDefault = u( $websiteNameDefault )->title( true );
+		$websiteUrlDefault  = 'https://' . $slug . '.test';
+
+		/**
+		 * Setup Helpers
+		 */
+		$slugger   = new AsciiSlugger();
+		$helper    = $this->getHelper( 'question' );
 		$directory = $slug !== '.' ? getcwd() . '/' . $slug : '.';
 		$composer  = $this->findComposer();
 		$finder    = new Finder();
 
+		/**
+		 * Write the intro message.
+		 */
 		$output->writeln( [
 			'<fg=blue>',
 			"
@@ -90,6 +116,10 @@ class NewCompanyCloudWebsiteCommand extends Command {
 			'</>',
 		] );
 
+		/**
+		 * If we are not in forced mode, check if
+		 * the folder exists to prevent overwrites.
+		 */
 		if ( ! $input->getOption( 'force' ) ) {
 			$this->verifyFolderDoesntExist( $directory );
 		}
@@ -98,63 +128,124 @@ class NewCompanyCloudWebsiteCommand extends Command {
 			throw new RuntimeException( 'Cannot use --force option when using current directory for installation!' );
 		}
 
+		/**
+		 * Print some intro messages.
+		 */
 		$output->writeln( 'This script will take you through converting the plugin base to a bespoke plugin project.' );
 		$output->writeln( 'You\'ll be asked for some configuration details. Some are required and others will allow you to customize the setup.' );
 
-		$websiteNameDefault = str_replace( '-', ' ', $slug );
-		$websiteNameDefault = u( $websiteNameDefault )->title( true );
+		/**
+		 * Setup Questions
+		 */
+		$clientNameQuestion = new Question( '<options=bold><fg=red>*</> Client Name:</> ', 'en_US' );
+		$clientNameQuestion->setValidator( function ( $answer ) {
+			if ( ! empty( $answer ) ) {
+				throw new RuntimeException( 'You must provide a client name.' );
+			}
 
-		$websiteUrlDefault = 'https://' . $slug . '.test';
+			return $answer;
+		} );
 
-		$localeQuestion        = new Question( '<options=bold>Website Locale [en_US]:</> ', 'en_US' );
-		$websiteUrlQuestion    = new Question( '<options=bold>Website URL [' . $websiteUrlDefault . ']:</> ', $websiteUrlDefault );
-		$websiteNameQuestion   = new Question( '<options=bold>Website Name [' . $websiteNameDefault . ']:</> ', $websiteNameDefault );
-		$adminUsernameQuestion = new Question( '<options=bold>Admin Username []:</> ', '' );
-		$adminEmailQuestion    = new Question( '<options=bold>Admin E-Mail Address []:</> ', '' );
-		$multisiteQuestion     = new ChoiceQuestion( '<options=bold>Install as multisite?</>', [
-			'yes',
-			'no',
-		] );
+		$localeQuestion      = new Question( '<options=bold>Website Locale [en_US]:</> ', 'en_US' );
+		$websiteUrlQuestion  = new Question( '<options=bold>Website URL [' . $websiteUrlDefault . ']:</> ', $websiteUrlDefault );
+		$websiteNameQuestion = new Question( '<options=bold>Website Name [' . $websiteNameDefault . ']:</> ', $websiteNameDefault );
+
+		$adminUsernameQuestion = new Question( '<options=bold><fg=red>*</> Admin Username:</> ', '' );
+		$adminUsernameQuestion->setValidator( function ( $answer ) {
+			if ( ! empty( $answer ) ) {
+				throw new RuntimeException( 'You must provide an admin username.' );
+			}
+
+			return $answer;
+		} );
+
+		$adminEmailQuestion = new Question( '<options=bold><fg=red>*</> Admin E-Mail Address:</> ', '' );
+		$adminEmailQuestion->setValidator( function ( $answer ) {
+			if ( ! empty( $answer ) ) {
+				throw new RuntimeException( 'You must provide an admin e-mail address.' );
+			}
+
+			return $answer;
+		} );
+
+		$multisiteQuestion     = new ConfirmationQuestion( '<options=bold>Install as multisite?</>', false );
 		$multisiteTypeQuestion = new ChoiceQuestion( '<options=bold>Use subdomains or subfolders?</>', [
 			'subdomains',
 			'subfolders',
 		] );
 
+		$useTemplateQuestion = new ConfirmationQuestion( '<options=bold>Use Template [y]:</>', true );
+
+		$ccTemplateQuestion = new ChoiceQuestion( '<options=bold>Company Cloud Template Name [Gallant]: </>', [
+			'gallant',
+			'vivacious',
+		], 'gallant' );
+
+		/**
+		 * Ask Introductory Questions
+		 */
+		$clientName    = $helper->ask( $input, $output, $clientNameQuestion );
 		$websiteName   = $helper->ask( $input, $output, $websiteNameQuestion );
 		$websiteUrl    = $helper->ask( $input, $output, $websiteUrlQuestion );
 		$locale        = $helper->ask( $input, $output, $localeQuestion );
+		$adminPassword = $this->getRandomPassword();
 		$adminUsername = $helper->ask( $input, $output, $adminUsernameQuestion );
 		$adminEmail    = $helper->ask( $input, $output, $adminEmailQuestion );
 		$multisite     = $helper->ask( $input, $output, $multisiteQuestion );
-		$adminPassword = $this->getRandomPassword();
 
-		if ( '1' === $multisite ) {
+		if ( $multisite ) {
 			$multisiteType = $helper->ask( $input, $output, $multisiteTypeQuestion );
 		}
 
-		sleep( 1 );
+		$useTemplate = $helper->ask( $input, $output, $useTemplateQuestion );
 
-		$commands = [
-			$composer . " create-project bernskioldmedia/company-cloud-website-template \"$directory\" --remove-vcs --prefer-dist",
-			'cd ' . $directory,
-			'wp core download --locale=' . $locale . ' --skip-content=true',
-		];
+		if ( $useTemplate ) {
+			$ccTemplate = $helper->ask( $input, $output, $ccTemplateQuestion );
+		}
+
+		/**
+		 * Construct Options
+		 */
+		$databaseName = u( $slug )->snake()->lower();
+
+		// Pause a second to make sure everything's set up.
+		sleep( 1 );
 
 		/**
 		 * Maybe remove the directory if force.
 		 */
-		if ( $directory != '.' && $input->getOption( 'force' ) ) {
-			if ( PHP_OS_FAMILY == 'Windows' ) {
-				array_unshift( $commands, "rd /s /q \"$directory\"" );
+		if ( $directory !== '.' && $input->getOption( 'force' ) ) {
+			if ( PHP_OS_FAMILY === 'Windows' ) {
+				$this->runShellCommand( "rd / s / q \"$directory\"" );
 			} else {
-				array_unshift( $commands, "rm -rf \"$directory\"" );
+				$this->runShellCommand( "rm -rf \"$directory\"" );
 			}
 		}
 
 		/**
+		 * Create the MySQL Database
+		 */
+		$output->writeln( 'Creating Database...' );
+		$this->runShellCommand( "mysql -u root -e \"create database if not exists $databaseName; GRANT ALL PRIVILEGES ON \`$databaseName\`.* TO 'wp'@'localhost'; FLUSH PRIVILEGES;\" " );
+
+		/**
+		 * Creating GitHub Repository and Clone it
+		 */
+		$output->writeln( 'Creating GitHub Repository' );
+		$this->runShellCommand( "gh repo create \"bernskioldmedia/$slug\" --private --template=\"bernskioldmedia/company-cloud-website-template\" -y" );
+
+		/**
+		 * Get the latest version.
+		 */
+		chdir( $directory );
+		$output->writeln( 'Cloning GitHub Repository' );
+		$this->runShellCommand( 'git pull origin master' );
+
+
+		/**
 		 * Install WordPress and Plugins
 		 */
-		if ( ( $process = $this->runCommands( $commands, $input, $output ) )->isSuccessful() ) {
+		if ( ( $process = $this->runCommands( $initCommands, $input, $output ) )->isSuccessful() ) {
 
 			if ( '1' === $multisite ) {
 				$installCommand = 'wp core multisite-install --title="' . $websiteName . '" --url="' . $websiteUrl . '" --subdomains="' . $multisiteType === 'subdomains' ? 'true' : 'false' . '" --admin_user="' . $adminUsername . '" --admin_email="' . $adminEmail . '" --admin_password="' . $adminPassword . '" --skip-config --skip-email';
