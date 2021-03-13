@@ -120,7 +120,7 @@ class PluginCommand extends Command {
 		if ( ( $process = $this->runCommands( $commands, $input, $output ) )->isSuccessful() ) {
 
 			// In all files...
-			foreach ( $finder->in( $directory . '/src' )->name( '*.php' ) as $file ) {
+			foreach ( $finder->in( $directory )->name( '*.php' ) as $file ) {
 
 				$output->writeln( '<info>Updating: ' . $file->getRealPath() . '</info>' );
 
