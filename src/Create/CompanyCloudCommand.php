@@ -7,6 +7,8 @@ use BernskioldMedia\WP\Installers\TouchesFiles;
 use Exception;
 use RuntimeException;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Helper\Table;
+use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -37,10 +39,10 @@ class CompanyCloudCommand extends Command {
 		'redirection',
 		'duplicate-post',
 		'wordpress-seo',
-		'https://github.com/bernskioldmedia/bm-wp-experience/archive/master.zip --force',
 		'safe-svg',
-		'https://github.com/wp-premium/advanced-custom-fields-pro/archive/master.zip --force',
-		'https://github.com/wp-premium/gravityforms/archive/master.zip --force',
+		'https://github.com/bernskioldmedia/bm-wp-experience/archive/master.zip',
+		'https://github.com/wp-premium/advanced-custom-fields-pro/archive/master.zip',
+		'https://github.com/wp-premium/gravityforms/archive/master.zip',
 	];
 
 	/**
@@ -71,7 +73,8 @@ class CompanyCloudCommand extends Command {
 	protected function configure() {
 		$this->setDescription( 'Set up a new company cloud website.' )
 		     ->addArgument( 'slug', InputArgument::REQUIRED, 'The kebab-case slug of the website.' )
-		     ->addOption( 'force', 'f', InputOption::VALUE_NONE, 'Forces install even if the directory already exists' );
+		     ->addOption( 'force', 'f', InputOption::VALUE_NONE, 'Forces install even if the directory already exists' )
+		     ->addOption( 'repository', 'r', InputOption::VALUE_OPTIONAL, 'Should a GitHub respository be created or not?', true );
 	}
 
 	/**
@@ -137,9 +140,9 @@ class CompanyCloudCommand extends Command {
 		/**
 		 * Setup Questions
 		 */
-		$clientNameQuestion = new Question( '<options=bold><fg=red>*</> Client Name:</> ', 'en_US' );
+		$clientNameQuestion = new Question( '<options=bold><fg=red>*</> Client Name:</> ' );
 		$clientNameQuestion->setValidator( function ( $answer ) {
-			if ( ! empty( $answer ) ) {
+			if ( empty( $answer ) ) {
 				throw new RuntimeException( 'You must provide a client name.' );
 			}
 
@@ -152,7 +155,7 @@ class CompanyCloudCommand extends Command {
 
 		$adminUsernameQuestion = new Question( '<options=bold><fg=red>*</> Admin Username:</> ', '' );
 		$adminUsernameQuestion->setValidator( function ( $answer ) {
-			if ( ! empty( $answer ) ) {
+			if ( empty( $answer ) ) {
 				throw new RuntimeException( 'You must provide an admin username.' );
 			}
 
@@ -161,25 +164,33 @@ class CompanyCloudCommand extends Command {
 
 		$adminEmailQuestion = new Question( '<options=bold><fg=red>*</> Admin E-Mail Address:</> ', '' );
 		$adminEmailQuestion->setValidator( function ( $answer ) {
-			if ( ! empty( $answer ) ) {
+			if ( empty( $answer ) ) {
 				throw new RuntimeException( 'You must provide an admin e-mail address.' );
 			}
 
 			return $answer;
 		} );
 
-		$multisiteQuestion     = new ConfirmationQuestion( '<options=bold>Install as multisite?</>', false );
+		$multisiteQuestion     = new ConfirmationQuestion( '<options=bold>Install as multisite [n]: </>', false );
 		$multisiteTypeQuestion = new ChoiceQuestion( '<options=bold>Use subdomains or subfolders?</>', [
 			'subdomains',
 			'subfolders',
 		] );
 
-		$useTemplateQuestion = new ConfirmationQuestion( '<options=bold>Use Template [y]:</>', true );
+		$useTemplateQuestion = new ConfirmationQuestion( '<options=bold>Use Template [y]: </>', true );
 
 		$ccTemplateQuestion = new ChoiceQuestion( '<options=bold>Company Cloud Template Name [Gallant]: </>', [
 			'gallant',
 			'vivacious',
 		], 'gallant' );
+
+		$packagesQuestion = ( new ChoiceQuestion( "<options=bold>What Company Cloud modules do you want to add?</>\n You may select several by comma-separating. Press enter to not install any.",
+			[
+				'bm-people',
+				'bm-customers',
+				'bm-modals',
+				'bm-navigation-shelf',
+			] ) )->setMultiselect( true );
 
 		/**
 		 * Ask Introductory Questions
@@ -187,6 +198,7 @@ class CompanyCloudCommand extends Command {
 		$clientName    = $helper->ask( $input, $output, $clientNameQuestion );
 		$websiteName   = $helper->ask( $input, $output, $websiteNameQuestion );
 		$websiteUrl    = $helper->ask( $input, $output, $websiteUrlQuestion );
+		$websiteDomain = str_replace( 'https://', '', $websiteUrl );
 		$locale        = $helper->ask( $input, $output, $localeQuestion );
 		$adminPassword = $this->getRandomPassword();
 		$adminUsername = $helper->ask( $input, $output, $adminUsernameQuestion );
@@ -203,10 +215,14 @@ class CompanyCloudCommand extends Command {
 			$ccTemplate = $helper->ask( $input, $output, $ccTemplateQuestion );
 		}
 
+		$packages = $helper->ask( $input, $output, $packagesQuestion );
+
 		/**
 		 * Construct Options
 		 */
-		$databaseName = u( $slug )->snake()->lower();
+		$databaseName     = u( $slug )->snake()->lower();
+		$clientNameDashed = u( $clientName )->snake();
+		$clientNameDashed = str_replace( '_', '-', $clientNameDashed );
 
 		// Pause a second to make sure everything's set up.
 		sleep( 1 );
@@ -223,6 +239,11 @@ class CompanyCloudCommand extends Command {
 		}
 
 		/**
+		 * Attempt to create the dir.
+		 */
+		$this->verifyFolderDoesntExist( $directory );
+
+		/**
 		 * Create the MySQL Database
 		 */
 		$output->writeln( 'Creating Database...' );
@@ -231,40 +252,133 @@ class CompanyCloudCommand extends Command {
 		/**
 		 * Creating GitHub Repository and Clone it
 		 */
-		$output->writeln( 'Creating GitHub Repository' );
-		$this->runShellCommand( "gh repo create \"bernskioldmedia/$slug\" --private --template=\"bernskioldmedia/company-cloud-website-template\" -y" );
+		$output->writeln( 'Creating Company Cloud website from template' );
+		$this->createPrivateProject( 'bernskioldmedia/company-cloud-website-template', $directory, false );
 
-		/**
-		 * Get the latest version.
-		 */
+		// Go into the directory.
 		chdir( $directory );
-		$output->writeln( 'Cloning GitHub Repository' );
-		$this->runShellCommand( 'git pull origin master' );
-
 
 		/**
-		 * Install WordPress and Plugins
+		 * Create a Local Config
 		 */
-		if ( ( $process = $this->runCommands( $initCommands, $input, $output ) )->isSuccessful() ) {
+		$configCommand = $this->getApplication()->find( 'make:config' );
+		$configArgs    = [
+			'name'       => 'local',
+			'--database' => $databaseName,
+			'--domain'   => $websiteDomain,
+		];
 
-			if ( '1' === $multisite ) {
-				$installCommand = 'wp core multisite-install --title="' . $websiteName . '" --url="' . $websiteUrl . '" --subdomains="' . $multisiteType === 'subdomains' ? 'true' : 'false' . '" --admin_user="' . $adminUsername . '" --admin_email="' . $adminEmail . '" --admin_password="' . $adminPassword . '" --skip-config --skip-email';
-			} else {
-				$installCommand = 'wp core install --title="' . $websiteName . '" --url="' . $websiteUrl . '" --admin_user="' . $adminUsername . '" --admin_email="' . $adminEmail . '" --admin_password="' . $adminPassword . '" --skip-email';
-			}
-
-			$this->runCommands( [ $installCommand ], $input, $output );
-			$this->setupWordPress( $locale, $input, $output );
-			$this->installPlugins( $multisite, $input, $output );
+		if ( $multisite ) {
+			$configArgs['--multisite'] = true;
 		}
 
+		$configInput = new ArrayInput( $configArgs );
+		$configCommand->run( $configInput, $output );
 
+		/**
+		 * Secure the website.
+		 */
+		$output->writeln( 'Securing website URL.' );
+		$this->runShellCommand( "valet secure $slug" );
+
+		/**
+		 * Download and install the selected template.
+		 */
+		if ( $useTemplate ) {
+
+			// Require the template.
+			$this->requirePackage( "bernskioldmedia/$ccTemplate" );
+
+			// Create a child theme.
+			$this->createPrivateProject( "bernskioldmedia/companycloud-child", "wp-content/themes/$clientNameDashed", false );
+
+			$this->replaceInFile( 'bernskioldmedia/companycloud-child', 'bm-clients/theme-' . $clientNameDashed, "wp-content/themes/$clientNameDashed/composer.json" );
+
+		} else {
+			// Create a Pliant theme project.
+			$this->createPrivateProject( 'bernskioldmedia/pliant', "wp-content/themes/$clientNameDashed", false );
+		}
+
+		/**
+		 * Load the selected packages.
+		 */
+		foreach ( $packages as $package ) {
+			$this->requirePackage( "bernskioldmedia/$package" );
+		}
+
+		/**
+		 * Update Composer.json
+		 */
+		$output->writeln( 'Updating composer.json' );
+		$this->replaceInFile( 'bm-clients/projectname', "bm-clients/$slug", 'composer.json' );
+		$this->replaceInFile( 'CLIENTNAME', $clientName, 'composer.json' );
+
+		/**
+		 * Updating README.
+		 */
+		$output->writeln( 'Updating README.md' );
+		$this->replaceInFile( 'CLIENTNAME', $clientName, 'README.md' );
+
+		/**
+		 * Run Composer Install
+		 */
+		$output->writeln( 'Installing and setting up.' );
+		$this->runShellCommand( 'composer update' );
+
+		/**
+		 * Download WordPress
+		 */
+		$this->runShellCommand( "wp core download --locale=$locale --skip-content --quiet" );
+
+		/**
+		 * Install WordPress
+		 */
+		if ( $multisite ) {
+			$subdomains = $multisiteType === 'subdomains' ? '--subdomains ' : '';
+			$this->runShellCommand( "wp core multisite-install --title=\"$websiteName\" --url=\"$websiteUrl\" $subdomains--admin_user=\"$adminUsername\" --admin_email=\"$adminEmail\" --admin_password=\"$adminPassword\" --skip-config --skip-email" );
+			$this->runShellCommand( 'wp network meta update 1 fileupload_maxk 1000000' );
+		} else {
+			$this->runShellCommand( "wp core install --title=\"$websiteName\" --url=\"$websiteUrl\" --admin_user=\"$adminUsername\" --admin_email=\"$adminEmail\" --admin_password=\"$adminPassword\" --skip-email" );
+		}
+
+		$this->setupWordPress( $locale, $input, $output );
+		$this->installPlugins( $multisite, $input, $output );
+
+		// Activate the client theme.
+		$this->runShellCommand( "wp theme activate $clientNameDashed" );
+
+		/**
+		 * Create a github repo for the folder.
+		 */
+		if ( $input->getOption( 'repository' ) ) {
+
+			$output->writeln( 'Creating .git respository.' );
+			$this->runShellCommand( 'git init' );
+			$this->runShellCommand( "git add ." );
+			$this->runShellCommand( "git commit -m \"Initial setup\"" );
+			$this->runShellCommand( 'git branch -M main' );
+
+			$output->writeln( 'Creating GitHub repository.' );
+			$this->runShellCommand( "gh repo create bernskioldmedia/$slug --private -y" );;
+			$this->runShellCommand( 'git push -u origin main' );
+		}
+
+		/**
+		 * Success!
+		 */
 		$output->writeln( '<info><options=bold>THE WEBSITE HAS BEEN INSTALLED AND SET UP</></info>' );
 		$output->writeln( 'Here are your admin details. Please save them in 1Password.' );
-		$output->writeln( '<options=bold>Username: </>' . $adminUsername );
-		$output->writeln( '<options=bold>Password: </>' . $adminPassword );
 
-		return $process->getExitCode();
+		$table = new Table( $output );
+		$table->setRows( [
+			[ 'Username', $adminUsername ],
+			[ 'Password', $adminPassword ],
+			[ 'Admin E-Mail', $adminEmail ],
+		] );
+
+		$table->render();
+
+		return 0;
 	}
 
 	protected function setupWordPress( $locale, $input, $output ) {
@@ -289,10 +403,10 @@ class CompanyCloudCommand extends Command {
 		$blogPageName = $locale === 'sv_SE' ? 'Blogg' : 'Blog';
 
 		if ( $setupWpProcess->isSuccessful() ) {
-			$setupHomePageProcess = $this->runCommands( [ "wp post create --post_type=page --post_title='$homePageName' --porcelain" ], $input, $output );
+			$setupHomePageProcess = $this->runCommands( [ "wp post create --post_type=page --post_title='$homePageName' --porcelain --post_status=publish" ], $input, $output );
 			$homePageId           = $setupHomePageProcess->isSuccessful() ? $setupHomePageProcess->getOutput() : '';
 
-			$setupBlogPageProcess = $this->runCommands( [ "wp post create --post_type=page --post_title='$blogPageName' --porcelain" ], $input, $output );
+			$setupBlogPageProcess = $this->runCommands( [ "wp post create --post_type=page --post_title='$blogPageName' --porcelain --post_status=publish" ], $input, $output );
 			$blogPageId           = $setupBlogPageProcess->isSuccessful() ? $setupBlogPageProcess->getOutput() : '';
 		}
 
@@ -309,7 +423,7 @@ class CompanyCloudCommand extends Command {
 		$this->runCommands( $updatePagesCommands, $input, $output );
 	}
 
-	protected function installPlugins( $network, $input, $output ) {
+	protected function installPlugins( $multisite, $input, $output ) {
 
 		$commands = [];
 
@@ -317,7 +431,7 @@ class CompanyCloudCommand extends Command {
 			$commands[] = 'wp plugin install ' . $plugin;
 		}
 
-		if ( '1' === $network ) {
+		if ( $multisite ) {
 			foreach ( self::$networkPlugins as $plugin ) {
 				$commands[] = 'wp plugin activate ' . $plugin;
 			}
