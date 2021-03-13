@@ -74,7 +74,8 @@ class CompanyCloudCommand extends Command {
 		$this->setDescription( 'Set up a new company cloud website.' )
 		     ->addArgument( 'slug', InputArgument::REQUIRED, 'The kebab-case slug of the website.' )
 		     ->addOption( 'force', 'f', InputOption::VALUE_NONE, 'Forces install even if the directory already exists' )
-		     ->addOption( 'repository', 'r', InputOption::VALUE_OPTIONAL, 'Should a GitHub respository be created or not?', true );
+		     ->addOption( 'repository', 'r', InputOption::VALUE_OPTIONAL, 'Should a GitHub respository be created or not?', true )
+		     ->addOption( 'database', null, InputOption::VALUE_OPTIONAL, 'Should a database automatically be created?', true );
 	}
 
 	/**
@@ -186,11 +187,12 @@ class CompanyCloudCommand extends Command {
 
 		$packagesQuestion = ( new ChoiceQuestion( "<options=bold>What Company Cloud modules do you want to add?</>\n You may select several by comma-separating. Press enter to not install any.",
 			[
+				'none',
 				'bm-people',
 				'bm-customers',
 				'bm-modals',
 				'bm-navigation-shelf',
-			] ) )->setMultiselect( true );
+			], '0' ) )->setMultiselect( true );
 
 		/**
 		 * Ask Introductory Questions
@@ -246,8 +248,10 @@ class CompanyCloudCommand extends Command {
 		/**
 		 * Create the MySQL Database
 		 */
-		$output->writeln( 'Creating Database...' );
-		$this->runShellCommand( "mysql -u root -e \"create database if not exists $databaseName; GRANT ALL PRIVILEGES ON \`$databaseName\`.* TO 'wp'@'localhost'; FLUSH PRIVILEGES;\" " );
+		if ( $input->getOption( 'database' ) ) {
+			$output->writeln( 'Creating Database...' );
+			$this->runShellCommand( "mysql -u root -e \"create database if not exists $databaseName; GRANT ALL PRIVILEGES ON \`$databaseName\`.* TO 'wp'@'localhost'; FLUSH PRIVILEGES;\" " );
+		}
 
 		/**
 		 * Creating GitHub Repository and Clone it
@@ -303,6 +307,10 @@ class CompanyCloudCommand extends Command {
 		 * Load the selected packages.
 		 */
 		foreach ( $packages as $package ) {
+			if ( 'none' === $package ) {
+				continue;
+			}
+
 			$this->requirePackage( "bernskioldmedia/$package" );
 		}
 
@@ -346,6 +354,11 @@ class CompanyCloudCommand extends Command {
 
 		// Activate the client theme.
 		$this->runShellCommand( "wp theme activate $clientNameDashed" );
+
+		/**
+		 * Update Dependencies
+		 */
+		$this->runShellCommand( 'composer update' );
 
 		/**
 		 * Create a github repo for the folder.
