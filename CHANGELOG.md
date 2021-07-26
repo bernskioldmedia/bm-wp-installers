@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file. This projec
 
 ## [Unreleased]
 
+## [1.1.1] - 2021-07-26
+
+### Fixed
+
+- Issue where all the make commands hadn't been properly removed.
+
 ## [1.1.0] - 2021-07-26
 
 ### Changed
