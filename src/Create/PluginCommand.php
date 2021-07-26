@@ -111,9 +111,10 @@ class PluginCommand extends Command {
 		$namespace = $input->getOption( 'namespace' );
 
 		if ( ! $namespace ) {
-			$namespace         = 'BernskioldMedia\\' . u( $clientName )->camel()->title() . '\\' . u( $slug )->camel()->title();
-			$composerNamespace = str_replace( '\\', '\\\\', $namespace );
+			$namespace = 'BernskioldMedia\\' . u( $clientName )->camel()->title() . '\\' . u( $slug )->camel()->title();
 		}
+		
+		$composerNamespace = str_replace( '\\', '\\\\', $namespace );
 
 		$commands = [
 			$composer . " create-project bernskioldmedia/wp-plugin-scaffold \"$directory\" --remove-vcs --prefer-dist",

@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file. This projec
 
 ## [Unreleased]
 
+## [1.1.2] - 2021-07-26
+
+### Fixed
+
+- Issue where the composer namespace wasn't properly generated.
+
 ## [1.1.1] - 2021-07-26
 
 ### Fixed
