@@ -13,6 +13,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\String\Slugger\AsciiSlugger;
+
 use function Symfony\Component\String\u;
 
 class PluginCommand extends Command {
@@ -30,6 +31,7 @@ class PluginCommand extends Command {
 		$this->setDescription( 'Set up a new WordPress plugin based on the BM WP Plugin Scaffold.' )
 		     ->addArgument( 'slug', InputArgument::REQUIRED, 'The plugin slug in kebab-case.' )
 		     ->addOption( 'namespace', 'ns', InputOption::VALUE_OPTIONAL, 'What namespace should the plugin use. Leave blank to auto-generate.', null )
+		     ->addOption( 'prefix', 'p', InputOption::VALUE_OPTIONAL, 'Add a short prefix that will be used to prefix some functions and constants.' )
 		     ->addOption( 'package', 'pkg', InputOption::VALUE_OPTIONAL, 'What name should we give to the composer package.', null )
 		     ->addOption( 'force', 'f', InputOption::VALUE_NONE, 'Forces install even if the directory already exists' );
 	}
@@ -37,13 +39,12 @@ class PluginCommand extends Command {
 	/**
 	 * Execute the command.
 	 *
-	 * @param  \Symfony\Component\Console\Input\InputInterface    $input
+	 * @param  \Symfony\Component\Console\Input\InputInterface  $input
 	 * @param  \Symfony\Component\Console\Output\OutputInterface  $output
 	 *
 	 * @return int
 	 */
 	protected function execute( InputInterface $input, OutputInterface $output ) {
-
 		$slugger = new AsciiSlugger();
 		$helper  = $this->getHelper( 'question' );
 
@@ -88,6 +89,15 @@ class PluginCommand extends Command {
 		$pluginUrl         = $helper->ask( $input, $output, $pluginUrlQuestion );
 		$version           = $helper->ask( $input, $output, $versionQuestion );
 
+		// Generate prefix.
+		$prefix = $input->getOption( 'prefix' );
+
+		if ( ! $prefix ) {
+			$prefixQuestion = new Question( '<options=bold>Prefix []:</> ', 'WPPS' );
+			$prefix         = $helper->ask( $input, $output, $prefixQuestion );
+		}
+
+		// Wait...
 		sleep( 1 );
 
 		// Generate package name.
@@ -118,10 +128,8 @@ class PluginCommand extends Command {
 		}
 
 		if ( ( $process = $this->runCommands( $commands, $input, $output ) )->isSuccessful() ) {
-
 			// In all files...
 			foreach ( $finder->in( $directory )->name( '*.php' ) as $file ) {
-
 				$output->writeln( '<info>Updating: ' . $file->getRealPath() . '</info>' );
 
 				// ...replace textdomain.
@@ -136,6 +144,8 @@ class PluginCommand extends Command {
 				// ...replace wp_plugin_scaffold.
 				$this->replaceInFile( 'wp_plugin_scaffold', u( $slug )->snake(), $file->getRealPath() );
 
+				// ...replace WPPS.
+				$this->replaceInFile( 'WPPS', u( $prefix )->upper(), $file->getRealPath() );
 			}
 
 			/**
@@ -169,7 +179,6 @@ class PluginCommand extends Command {
 
 			// Rename main plugin file.
 			rename( $directory . '/wp-plugin-scaffold.php', $directory . '/' . $slug . '.php' );
-
 		}
 
 		chdir( $directory );
