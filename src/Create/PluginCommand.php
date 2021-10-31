@@ -39,7 +39,7 @@ class PluginCommand extends Command {
 	/**
 	 * Execute the command.
 	 *
-	 * @param  \Symfony\Component\Console\Input\InputInterface  $input
+	 * @param  \Symfony\Component\Console\Input\InputInterface    $input
 	 * @param  \Symfony\Component\Console\Output\OutputInterface  $output
 	 *
 	 * @return int
@@ -113,7 +113,7 @@ class PluginCommand extends Command {
 		if ( ! $namespace ) {
 			$namespace = 'BernskioldMedia\\' . u( $clientName )->camel()->title() . '\\' . u( $slug )->camel()->title();
 		}
-		
+
 		$composerNamespace = str_replace( '\\', '\\\\', $namespace );
 
 		$commands = [
@@ -130,7 +130,13 @@ class PluginCommand extends Command {
 
 		if ( ( $process = $this->runCommands( $commands, $input, $output ) )->isSuccessful() ) {
 			// In all files...
-			foreach ( $finder->in( $directory )->name( '*.php' ) as $file ) {
+			foreach (
+				$finder->in( $directory )->name( [
+					'*.php',
+					'composer.json',
+					'package.json',
+				] ) as $file
+			) {
 				$output->writeln( '<info>Updating: ' . $file->getRealPath() . '</info>' );
 
 				// ...replace textdomain.
