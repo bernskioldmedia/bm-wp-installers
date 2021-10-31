@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file. This projec
 
 ## [Unreleased]
 
+## [1.2.1] - 2021-10-31
+
+### Changed
+
+- Handle replacements in plugin command better.
+
 ## [1.2.0] - 2021-07-31
 
 ### Changed
