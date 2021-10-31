@@ -135,54 +135,40 @@ class PluginCommand extends Command {
 					'*.php',
 					'composer.json',
 					'package.json',
+					'.gitattributes',
+					'webpack.config.js',
 				] ) as $file
 			) {
 				$output->writeln( '<info>Updating: ' . $file->getRealPath() . '</info>' );
 
 				// ...replace textdomain.
 				$this->replaceInFile( 'wp-plugin-scaffold', $slug, $file->getRealPath() );
+				$this->replaceInFile( 'TEXTDOMAIN', $slug, $file->getRealPath() );
 
 				// ...replace uppercase prefix.
 				$this->replaceInFile( 'WP_PLUGIN_SCAFFOLD', u( $slug )->snake()->upper(), $file->getRealPath() );
 
 				// ...replace namespace.
 				$this->replaceInFile( 'BernskioldMedia\\WP\\PluginScaffold', $namespace, $file->getRealPath() );
+				$this->replaceInFile( 'BernskioldMedia\\\\WP\\\\PluginScaffold', $composerNamespace, $file->getRealPath() );
 
 				// ...replace wp_plugin_scaffold.
 				$this->replaceInFile( 'wp_plugin_scaffold', u( $slug )->snake(), $file->getRealPath() );
 
 				// ...replace WPPS.
 				$this->replaceInFile( 'WPPS', u( $prefix )->upper(), $file->getRealPath() );
+
+				// ..replace removables
+				$this->replaceInFile( '#TOREMOVE ', '', $file->getRealPath() );
+
+				$this->replaceInFile( 'WP Plugin Scaffold', $pluginName, $file->getRealPath() );
+				$this->replaceInFile( 'A WordPress plugin scaffold that we use at Bernskiold Media when developing client specific plugins.', $pluginDescription,
+					$file->getRealPath() );
+				$this->replaceInFile( 'https://website.com', $pluginUrl, $file->getRealPath() );
+
+				$this->replaceInFile( '1.0.0', $version, $file->getRealPath() );
+				$this->replaceInFile( 'bernskioldmedia/wp-plugin-scaffold', $package, $file->getRealPath() );
 			}
-
-			/**
-			 * Update package.json
-			 */
-			$output->writeln( '<info>Updating package.json.</info>' );
-			$this->replaceInFile( 'wp-plugin-scaffold', $slug, $directory . '/package.json' );
-			$this->replaceInFile( 'A WordPress plugin scaffold that we use at Bernskiold Media when developing client specific plugins.', $pluginDescription,
-				$directory . '/package.json' );
-			$this->replaceInFile( '1.0.0', $version, $directory . '/package.json' );
-
-			/**
-			 * Update composer.json
-			 */
-			$output->writeln( '<info>Updating composer.json.</info>' );
-			$this->replaceInFile( 'bernskioldmedia/wp-plugin-scaffold', $package, $directory . '/composer.json' );
-			$this->replaceInFile( 'A WordPress plugin scaffold that we use at Bernskiold Media when developing client specific plugins.', $pluginDescription,
-				$directory . '/composer.json' );
-			$this->replaceInFile( 'BernskioldMedia\\\\WP\\\\PluginScaffold', $composerNamespace, $directory . '/composer.json' );
-
-			/**
-			 * Update Main Plugin File
-			 */
-			$output->writeln( '<info>Updating Main Plugin file.</info>' );
-			$this->replaceInFile( 'WP Plugin Scaffold', $pluginName, $directory . '/wp-plugin-scaffold.php' );
-			$this->replaceInFile( 'A WordPress plugin scaffold that we use at Bernskiold Media when developing client specific plugins.', $pluginDescription,
-				$directory . '/wp-plugin-scaffold.php' );
-			$this->replaceInFile( 'https://website.com', $pluginUrl, $directory . '/wp-plugin-scaffold.php' );
-			$this->replaceInFile( '1.0.0', $version, $directory . '/wp-plugin-scaffold.php' );
-			$this->replaceInFile( 'wp-plugin-scaffold', $slug, $directory . '/wp-plugin-scaffold.php' );
 
 			// Rename main plugin file.
 			rename( $directory . '/wp-plugin-scaffold.php', $directory . '/' . $slug . '.php' );
